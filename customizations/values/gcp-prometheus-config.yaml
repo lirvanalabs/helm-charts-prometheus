@@ -1,0 +1,70 @@
+# GCP Managed Prometheus Configuration
+# This configures the cluster to send metrics to GCP Managed Prometheus
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gmp-system
+---
+# PodMonitoring resource to collect metrics from kube-prometheus-stack components
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: kube-prometheus-stack-monitoring
+  namespace: monitor
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kube-state-metrics
+  endpoints:
+  - port: http-metrics
+    interval: 30s
+    path: /metrics
+---
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: node-exporter-monitoring
+  namespace: monitor
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus-node-exporter
+  endpoints:
+  - port: http-metrics
+    interval: 30s
+    path: /metrics
+---
+# ServiceMonitor for Grafana metrics
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: grafana-monitoring
+  namespace: monitor
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: grafana
+  endpoints:
+  - port: http-web
+    interval: 30s
+    path: /metrics
+---
+# Collect metrics from all Lirvana application services
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: lirvana-services-monitoring
+  namespace: lirvana
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: lirvana
+  endpoints:
+  - port: http
+    interval: 30s
+    path: /actuator/prometheus
+  - port: metrics
+    interval: 30s
+    path: /metrics
+
