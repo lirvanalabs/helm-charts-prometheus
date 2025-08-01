@@ -1,0 +1,46 @@
+# Production environment configuration
+# Extends gcp-prometheus-base.yaml with production-specific settings
+
+grafana:
+  # Admin credentials for production
+  adminPassword: "secure-prod-password"
+  
+  # Grafana configuration
+  grafana.ini:
+    server:
+      root_url: "{{ if (and .Values.ingress.enabled .Values.ingress.hosts) }}https://{{ tpl (.Values.ingress.hosts | first) . }}{{ else }}''{{ end }}"
+    users:
+      auto_assign_org_role: Editor
+  
+  # Production-specific datasources
+  additionalDataSources:
+    - name: "GCP Prometheus Dev"
+      type: prometheus
+      uid: gcp-prometheus-dev
+      url: "https://monitoring.googleapis.com/v1/projects/lirvana-labs-development/location/global/prometheus"
+      access: proxy
+      isDefault: false  # Dev datasource available but not default
+      editable: true
+      jsonData:
+        httpMethod: POST
+        queryTimeout: "300s"
+        timeInterval: "30s"
+        httpHeaderName1: "Authorization"
+      secureJsonData:
+        httpHeaderValue1: "Bearer PLACEHOLDER_TOKEN"
+    
+    - name: "GCP Prometheus Prod"
+      type: prometheus
+      uid: gcp-prometheus-prod
+      url: "https://monitoring.googleapis.com/v1/projects/lirvana-labs-production/location/global/prometheus"
+      access: proxy
+      isDefault: true  # Prod datasource is default in production
+      editable: true
+      jsonData:
+        httpMethod: POST
+        queryTimeout: "300s"
+        timeInterval: "30s"
+        httpHeaderName1: "Authorization"
+      secureJsonData:
+        httpHeaderValue1: "Bearer PLACEHOLDER_TOKEN"
+

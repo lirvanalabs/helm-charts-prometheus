@@ -1,3 +1,15 @@
+# Lirvana customization temporary files
+backup-*.yaml
+*.bak
+*.tmp
+
+# Environment-specific secrets (if any)
+customizations/values/secrets/
+
+# Old customization files (to be cleaned up)
+charts/kube-prometheus-stack/values-dev-*.yaml
+charts/kube-prometheus-stack/grafana-token-refresher*.sh
+
 # Chart dependencies
 /charts/*/charts
 .idea

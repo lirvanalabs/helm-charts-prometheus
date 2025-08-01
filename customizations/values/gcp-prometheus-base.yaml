@@ -1,0 +1,149 @@
+# Base configuration for GCP Managed Prometheus integration
+# This file contains the core customizations needed for automated OAuth token refresh
+
+nameOverride: "kube-prometheus-stack"
+namespaceOverride: "monitor"
+
+# Disable local Prometheus and Alertmanager (using GCP Managed Prometheus instead)
+prometheus:
+  enabled: false
+
+alertmanager:
+  enabled: false
+
+# Keep Prometheus Operator enabled for CRDs and other components
+prometheusOperator:
+  enabled: true
+
+# Enable monitoring components
+kubeApiServer:
+  enabled: true
+kubeControllerManager:
+  enabled: true
+kubeEtcd:
+  enabled: true
+kubeProxy:
+  enabled: true
+kubeScheduler:
+  enabled: true
+kubelet:
+  enabled: true
+kubeStateMetrics:
+  enabled: true
+nodeExporter:
+  enabled: true
+kubernetesServiceMonitors:
+  enabled: true
+
+# DNS monitoring
+coreDns:
+  enabled: true
+kubeDns:
+  enabled: false
+
+# Configure Grafana with GCP Prometheus integration
+grafana:
+  enabled: true
+  
+  # Ingress configuration
+  ingress:
+    enabled: true
+    hosts:
+      - grafana.lirvanalabs.dev
+  
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 3000
+  
+  # Persistence
+  persistence:
+    enabled: true
+    type: pvc
+    size: 10Gi
+    accessModes:
+      - ReadWriteOnce
+  
+  # Sidecar configuration
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: ALL
+    datasources:
+      enabled: true
+      defaultDatasourceEnabled: false
+  
+  # Token refresher sidecar container
+  extraContainers: |
+    - name: grafana-token-refresher
+      image: curlimages/curl:latest
+      command: ["/bin/sh", "/grafana-token-refresher.sh"]
+      env:
+        - name: REFRESH_INTERVAL
+          value: "1800"  # 30 minutes
+        - name: GRAFANA_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: kube-prometheus-stack-grafana
+              key: admin-password
+      volumeMounts:
+        - name: token-refresher-script
+          mountPath: /grafana-token-refresher.sh
+          subPath: grafana-token-refresher.sh
+
+  # Extra volumes for the token refresher
+  extraVolumes:
+    - name: token-refresher-script
+      configMap:
+        name: grafana-token-refresher-script
+        defaultMode: 0755
+
+# Configure monitoring rules (disable Prometheus-specific ones)
+defaultRules:
+  create: true
+  rules:
+    # General rules
+    general: true
+    configReloaders: true
+    
+    # Kubernetes rules
+    k8sContainerCpuUsageSecondsTotal: true
+    k8sContainerMemoryCache: true
+    k8sContainerMemoryRss: true
+    k8sContainerMemorySwap: true
+    k8sContainerMemoryWorkingSetBytes: true
+    k8sContainerResource: true
+    k8sPodOwner: true
+    kubernetesApps: false
+    kubernetesResources: true
+    kubernetesStorage: true
+    kubernetesSystem: true
+    
+    # Component rules
+    kubeControllerManager: true
+    kubeProxy: true
+    kubeSchedulerRecording: true
+    kubeStateMetrics: true
+    kubelet: true
+    nodeExporterRecording: true
+    node: true
+    network: true
+    etcd: true
+    
+    # Disable Prometheus and Alertmanager rules since we're not using them
+    prometheus: false
+    prometheusOperator: false
+    kubePrometheusGeneral: false
+    kubePrometheusNodeRecording: true
+    alertmanager: false
+    
+    # Disable API server rules (can be noisy)
+    kubeApiserverAvailability: false
+    kubeApiserverBurnrate: false
+    kubeApiserverHistogram: false
+    kubeApiserverSlos: false
+    kubeSchedulerAlerting: false
+    nodeExporterAlerting: false
